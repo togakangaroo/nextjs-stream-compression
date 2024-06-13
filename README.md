@@ -1,36 +1,58 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+This demonstrates an issue with nextjs api where nextjs does not send a response stream if that stream contains compressed data for some reason.
 
-First, run the development server:
+Note that to compress streaming web content is easy in node, a working example is included in [not-next/gzip-response-stream.js](not-next/gzip-response-stream.js)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+    node not-next/gzip-response-stream.js
+
+then
+
+    curl -s http://localhost:8888 | gunzip -c
+
+gives us the expected `hello world` output.
+
+I would expect the exact same thing to be possible with NextJs. Let's create a route [api/hello](./pages/api/hello.js) just to demonstrate that yes, writing to a stream (which is unusual but a good way to minimize memory overhad) does indeed work
+
+```javascript
+  export default function handler(req, res) {
+    res.status(200)
+    res.write(JSON.stringify({ message: 'bunnymen say hello' }))
+    res.end();
+  }
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+    npm run dev
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+and
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+    curl -s "http://localhost:3000/api/hello" | jq
 
-## Learn More
+gives us the expected json output
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+ok, now with compression we add [api/hello-compressed](./pages/api/hello-compressed.js)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+```javascript
+  const { createGzip } = require('zlib');
+  export default function handler(req, res) {
+    res.status(200)
+    const gzip = createGzip()
+    gzip.pipe(res)
+    gzip.write(JSON.stringify({ message: 'fanny fatnugget says hello' }))
+    gzip.end();
+    res.end();
+  }
+```
 
-## Deploy on Vercel
+and now
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+    curl -s localhost:3000/api/hello-compressed | gunzip | jq .
+
+hmm, that fails, unexpected end of file
+
+    curl -s http://localhost:3000/api/hello-compressed | wc -c
+
+0 bytes! What's going on!?
