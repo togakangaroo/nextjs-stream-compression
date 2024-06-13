@@ -1,6 +1,6 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-This demonstrates an issue with nextjs api where nextjs does not send a response stream if that stream contains compressed data for some reason.
+This demonstrates [an issue with nextjs api where](https://github.com/vercel/next.js/issues/66833) nextjs does not send a response stream if that stream contains compressed data for some reason.
 
 Note that to compress streaming web content is easy in node, a working example is included in [not-next/gzip-response-stream.js](not-next/gzip-response-stream.js)
 
